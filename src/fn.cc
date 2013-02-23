@@ -283,40 +283,26 @@ static Cell* _compile(Fn* fn, Env* env, Cell* c) {
 
 
 bool Fn::compile(Env* env) {
+  assert(_body != 0);
+
   // Add to the compile stack
   env->compile_stack.push(this);
 
-  // TODO: Walk body chain and resolve any symbols from `env`, unless the
-  // symbol exists in `params`. The vars of the resolved symbols are retained,
-  // so that reconfiguring the value of the var outside the function will
-  // reflect on the function body.
-  Cell* body = _body;
-  Cell* prev = 0;
-  bool success = true;
-
-  // TODO: use compile_chain instead
-
-  while (body != 0) {
-    Cell* c = _compile(this, env, body);
-    if (c == 0) {
-      // Error
-      success = false;
-      break;
-    }
-    if (prev == 0) {
-      _body = c;
-    } else {
-      prev->rest = c;
-    }
-    prev = body;
-    body = body->rest;
-  }
+  // Compile all bodies
+  Cell* body = compile_chain(this, env, _body);
 
   // Remove from the compile stack
   assert(env->compile_stack.top() == this);
   env->compile_stack.pop();
 
-  return success;
+  if (body != _body) {
+    if (body == 0) {
+      return false;
+    }
+    Cell::free(_body);
+    _body = body;
+  }
+  return true;
 }
 
 

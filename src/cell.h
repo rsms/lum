@@ -1,0 +1,120 @@
+#ifndef _LUM_CELL_H_
+#define _LUM_CELL_H_
+
+#include <lum/common.h>
+#include <lum/print.h> // for operator<<Cell*
+#include <lum/sym.h>
+
+namespace lum {
+
+enum class Type : size_t {
+  UNKNOWN,
+  BOOL,
+  INT,
+  FLOAT,
+  BIF,
+  FN,
+  SYM,
+  KEYWORD,
+  VAR,
+  LOCAL,
+  QUOTE,
+  CONS,  // (x ...)
+  NS,
+};
+
+struct Namespace;
+struct Var;
+struct Cell;
+struct Env;
+struct Sym;
+struct Fn;
+
+// BIF implementation function type
+typedef Cell* (*BIFImpl)(Env*,Cell*);
+
+struct Cell {
+  Type type;
+  union { void* p; int64_t i; double f; } value;
+  Cell* rest;
+
+  constexpr Cell(BIFImpl p, Cell* rest=0)
+    : type(Type::BIF), value{.p=(void*)(p)}, rest(rest) {}
+  constexpr Cell(const Sym const* p, Cell* rest=0)
+    : type(Type::SYM), value{.p=(void*)(p)}, rest(rest) {}
+  constexpr Cell(bool p, Cell* rest=0)
+    : type(Type::BOOL), value{.i=int64_t(p)}, rest(rest) {}
+
+  static Cell* alloc();
+  static void free(Cell* c);
+
+  static Cell* create(Type t) {
+    Cell* c = alloc(); c->type = t; return c;
+  }
+  static Cell* createBool(bool v, Cell* rest=0) {
+    Cell* c = create(Type::BOOL);
+    c->value.i = (int64_t)v;
+    c->rest = rest;
+    return c;
+  }
+  static Cell* createInt(int64_t v, Cell* rest=0, Type t=Type::INT) {
+    Cell* c = create(t);
+    c->value.i = v;
+    c->rest = rest;
+    return c;
+  }
+  static Cell* createFloat(double v, Cell* rest=0) {
+    Cell* c = create(Type::FLOAT);
+    c->value.f = v;
+    c->rest = rest;
+    return c;
+  }
+  static Cell* createPtr(Type t, void* v, Cell* rest) {
+    Cell* c = create(t);
+    c->value.p = v;
+    c->rest = rest;
+    return c;
+  }
+  static Cell* createBIF(BIFImpl v) {
+    return createPtr(Type::BIF, (void*)v, 0);
+  }
+  static Cell* createSym(const Sym const* v, Cell* rest=0) {
+    return createPtr(Type::SYM, (void*)v, rest);
+  }
+  static Cell* createKeyword(const Sym const* v, Cell* rest=0) {
+    return createPtr(Type::KEYWORD, (void*)v, rest);
+  }
+  static Cell* createVar(Var* v, Cell* rest=0) {
+    return createPtr(Type::VAR, (void*)v, rest);
+  }
+  static Cell* createLocal(uint64_t stack_offset, Cell* rest=0) {
+    return createInt((int64_t)stack_offset, rest, Type::LOCAL);
+  }
+  static Cell* createQuote(Cell* v, Cell* rest=0) {
+    return createPtr(Type::QUOTE, (void*)v, rest);
+  }
+  static Cell* createCons(Cell* v, Cell* rest=0) {
+    return createPtr(Type::CONS, (void*)v, rest);
+  }
+  static Cell* createNS(Namespace* v, Cell* rest=0) {
+    return createPtr(Type::NS, (void*)v, rest);
+  }
+  static Cell* createFn(Fn* v, Cell* rest=0) {
+    return createPtr(Type::FN, (void*)v, rest);
+  }
+  static Cell* createNil(Cell* rest=0) {
+    return createSym(kSym_nil, rest);
+  }
+  static Cell* copy(Cell* other, Cell* rest=0) {
+    Cell* c = alloc();
+    memcpy((void*)c, (const void*)other, sizeof(Cell));
+    c->rest = rest;
+    return c;
+  }
+
+  static const char* type_name(Type type);
+  const char* type_name() const { return type_name(type); }
+};
+
+} // namespace lum
+#endif // _LUM_CELL_H_

@@ -252,10 +252,10 @@ static Cell* compile_local(Fn* fn, Env* env, Cell* cell) {
   }
 
   // offset by the current locals stack size
+  assert(fn->_param_count-1 <= stack_offset);
   cell = Cell::copy(cell);
   cell->value.i = (int64_t)(stack_offset - fn->_param_count-1);
-
-  std::cout << "  => later\n";
+  std::cout << "  => outer_scope " << cell << "\n";
   return cell;
 }
 

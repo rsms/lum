@@ -53,7 +53,8 @@ inline Cell* eval_cons(Env* env, Cell* c) {
   size_t result_entry_index = env->results.index();
   Cell* target = (Cell*)c->value.p;
   Cell* args = target->rest;
-  std::cout << "apply("; print1(std::cout, target) << ", " << args << ")\n";
+  std::cout << "apply(" << target << ", ";
+    printchain(std::cout, args) << ")\n";
   target = eval(env, target);
   Cell* result;
 
@@ -69,42 +70,9 @@ inline Cell* eval_cons(Env* env, Cell* c) {
     env->results.push(result);
 
   } else if (target->type == Type::FN) {
-    // User function
+    // Apply user function
     Fn* fn = (Fn*)target->value.p;
-
-    #if 0
-    // push args to the locals stack
-    Cell* arg = args;
-    size_t locals_entry_index = env->locals.index;
-    while (arg != 0) {
-      // TODO: variable "..." args
-      env->locals.push(arg);
-      arg = arg->rest;
-    }
-
-    // Did we satisfy the param count?
-    size_t arg_count = env->locals.index - locals_entry_index;
-    if (arg_count != fn->param_count()) {
-      if (arg_count < fn->param_count()) {
-        std::cerr << "too few arguments to function " << fn << "\n";
-      } else {
-        std::cerr << "too many arguments to function " << fn << "\n";
-      }
-      env->unwind_locals(locals_entry_index);
-      return 0;
-    }
-
-    std::cout << "locals" << env->locals << "\n";
-
-    // Apply
     result = fn->apply(env, args);
-
-    // pop args from the local stack
-    env->unwind_locals(locals_entry_index);
-    #else
-    // Apply
-    result = fn->apply(env, args);
-    #endif
 
   } else {
     std::cerr << "first item in list is not a function\n";

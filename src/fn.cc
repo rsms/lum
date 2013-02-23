@@ -3,6 +3,7 @@
 #include <lum/cell.h>
 #include <lum/eval.h>
 #include <lum/print.h>
+#include <lum/bif.h>
 
 namespace lum {
 
@@ -12,7 +13,7 @@ Fn* Fn::create(Env* env, Cell* params) {
 
   Cell* body = params->rest;
   assert(body != 0);
-  params->rest = 0; // separate params from body
+  //params->rest = 0; // separate params from body
 
   // Count parameters and check their types
   uint32_t param_count = 0;
@@ -46,16 +47,13 @@ Fn* Fn::create(Env* env, Cell* params) {
     p.type = Type::UNKNOWN;
     p.is_variable = p.name->ends_with("...");
 
-    Cell* prev_param = param;
+    //Cell* prev_param = param;
     param = param->rest;
     // we only needed to inspect the param and copy the pointer to the interned
     // string, so now we need to free the cell since we own it.
-    Cell::free(prev_param);
-  }
 
-  // Compile the function body
-  if (!fn->compile(env)) {
-    std::free(fn);
+    //Cell::free(prev_param); // FIXME Can't do this since inner compilation
+    // only borrows these, and does not give them away.
   }
 
   return fn;
@@ -100,27 +98,78 @@ Fn* Fn::create(Env* env, Cell* params) {
   //
 }
 
+
+void Fn::free(Fn* fn) {
+  std::free(fn);
+}
+
+
 static Cell* _compile(Fn* fn, Env* env, Cell* c);
 
 
-static Cell* compile_cons(Fn* fn, Env* env, Cell* cons) {
-  Cell* first = (Cell*)cons->value.p;
-  if (first != 0) {
-    Cell* c = first;
-    Cell* prev = 0;
-    do {
-      Cell* nc = _compile(fn, env, c);
-      if (nc != c) {
-        // substitute cell
-        // TODO memory management
-        if (prev == 0) {
-          cons->value.p = (void*)c;
-        } else {
-          prev->rest = c;
+static Cell* compile_chain(Fn* fn, Env* env, Cell* first) {
+  Cell* c = first;
+  Cell* prev = 0;
+  Cell* head = 0;
+
+  while (c) {
+    Cell* nc = _compile(fn, env, c);
+
+    #if 1
+    // Special case: (core/fn ...) stays untouched for now
+    if (c == first && nc->type == Type::VAR) {
+      Cell* vc = ((Var*)nc->value.p)->get();
+      if (vc->type == Type::BIF && ((BIFImpl)vc->value.p) == &BIF_fn) {
+        // TODO: Actually compile the contents of (fn ...) but mark env with
+        // something like env->is_compiling_future_fn=true so that unresolved
+        // symbols can be ignored (e.g. (fn (z) (+ z)) would not cause a
+        // "symbol z can't be resolved" error).
+        std::cout << "[fn compile_cons] inner (core/fn ...)\n";
+
+        Fn* inner_fn = Fn::create(env, c->rest);
+        if (inner_fn == 0) {
+          return 0;
         }
+
+        env->compile_stack.push(inner_fn);
+
+        Cell* head = compile_chain(inner_fn, env, 
+          const_cast<Cell*>(inner_fn->body()));
+        
+        assert(env->compile_stack.top() == inner_fn);
+        env->compile_stack.pop();
+
+        Fn::free(inner_fn); // throw away
+        if (head == 0) {
+          return 0;
+        }
+        return first;
       }
-    } while ((c = c->rest) != 0);
+    }
+    #endif
+
+    if (head == 0) {
+      head = nc;
+    } else {
+      prev->rest = nc;
+    }
+    prev = nc;
+
+    c = c->rest;
   }
+
+  return head;
+}
+
+
+static Cell* compile_cons(Fn* fn, Env* env, Cell* cons) {
+  std::cout << "compile_cons(" << cons << ")...\n";
+  Cell* head = compile_chain(fn, env, (Cell*)cons->value.p);
+  if (head == 0) {
+    return 0;
+  }
+  cons->value.p = (void*)head;
+  std::cout << "compile_cons(...) => " << cons << "\n";
   return cons;
 }
 
@@ -146,7 +195,37 @@ static Cell* compile_symbol(Fn* fn, Env* env, Cell* symcell) {
     }
   }
 
-  // The symbol references something in env
+  // Look outside our compile scope, as we might be inside another compile
+  // scope which have locals that match our symbol
+  if (env->compile_stack.index > 1) {
+    const Str* name = sym->name;
+    size_t compile_stack_offs = env->compile_stack.index - 2;
+    do {
+      Fn* parent_fn = env->compile_stack.at(compile_stack_offs);
+      assert(parent_fn != fn);
+
+      uint32_t i = 0;
+      for (; i != parent_fn->param_count(); ++i) {
+        if (parent_fn->param(i).name == name) {
+          // Found a match
+          uint64_t stack_offset = parent_fn->_param_count - (i+1);
+          // Offset by the local param_count
+          stack_offset += fn->_param_count;
+
+          std::cout << "symbol(" << sym << ") => in parent "
+                    << parent_fn << " at offset " << stack_offset <<  "\n";
+          // Convert sym to local
+          symcell->type = Type::LOCAL;
+          symcell->value.i = (int64_t)stack_offset;
+          return symcell;
+        }
+      }
+
+    } while (compile_stack_offs--);
+
+  }
+
+  // Perhaps the symbol references something in env then
   Var* var = env->resolve_symbol(sym);
   if (var == 0) {
     std::cerr << "Unable to resolve symbol '" << sym << "' in this context\n";
@@ -161,29 +240,61 @@ static Cell* compile_symbol(Fn* fn, Env* env, Cell* symcell) {
 }
 
 
+static Cell* compile_local(Fn* fn, Env* env, Cell* cell) {
+  std::cout << "compile_local("; print1(std::cout, cell) << ")\n";
+
+  uint32_t stack_offset = (uint32_t)cell->value.i;
+
+  if (stack_offset < env->locals.index) {
+    std::cout << "  => ";
+    print1(std::cout, env->locals.at(stack_offset)) << "\n";
+    return Cell::copy(env->locals.at(stack_offset));
+  }
+
+  // offset by the current locals stack size
+  cell = Cell::copy(cell);
+  cell->value.i = (int64_t)(stack_offset - fn->_param_count-1);
+
+  std::cout << "  => later\n";
+  return cell;
+}
+
+
+static Cell* compile_fn(Fn* fn, Env* env, Cell* cell) {
+  std::cout << "compile_fn(" << cell << ") => " << cell << "\n";
+  return cell;
+}
+
+
 static Cell* _compile(Fn* fn, Env* env, Cell* c) {
   switch (c->type) {
     case Type::SYM:     { return compile_symbol(fn, env, c); }
-    // case Type::VAR:     { return compile_var(fn, env, c); }
-    // case Type::QUOTE:   { return compile_quote(fn, env, c); }
+    case Type::LOCAL:   { return compile_local(fn, env, c); }
     case Type::CONS:    { return compile_cons(fn, env, c); }
+    case Type::FN:      { return compile_fn(fn, env, c); }
     default: { return c; }
   }
 }
 
 
 bool Fn::compile(Env* env) {
+  // Add to the compile stack
+  env->compile_stack.push(this);
+
   // TODO: Walk body chain and resolve any symbols from `env`, unless the
   // symbol exists in `params`. The vars of the resolved symbols are retained,
   // so that reconfiguring the value of the var outside the function will
   // reflect on the function body.
   Cell* body = _body;
   Cell* prev = 0;
+  bool success = true;
+
   while (body != 0) {
     Cell* c = _compile(this, env, body);
     if (c == 0) {
       // Error
-      return false;
+      success = false;
+      break;
     }
     if (prev == 0) {
       _body = c;
@@ -193,14 +304,46 @@ bool Fn::compile(Env* env) {
     prev = body;
     body = body->rest;
   }
-  return true;
+
+  // Remove from the compile stack
+  assert(env->compile_stack.top() == this);
+  env->compile_stack.pop();
+
+  return success;
 }
 
 
 Cell* Fn::apply(Env* env, Cell* args) {
-  std::cout << "Fn::apply(" << args << ")\n";
-  // FIXME arguments
-  return eval(env, _body);
+  std::cout << "Fn::apply("; printchain(std::cout, args) << ")\n";
+
+  // push args to the locals stack
+  Cell* arg = args;
+  size_t locals_entry_index = env->locals.index;
+  while (arg != 0) {
+    // TODO: variable "..." args
+    env->locals.push(arg);
+    arg = arg->rest;
+  }
+
+  // Did we satisfy the param count?
+  size_t arg_count = env->locals.index - locals_entry_index;
+  if (arg_count != param_count()) {
+    if (arg_count < param_count()) {
+      std::cerr << "too few arguments to function " << this << "\n";
+    } else {
+      std::cerr << "too many arguments to function " << this << "\n";
+    }
+    env->unwind_locals(locals_entry_index);
+    return 0;
+  }
+
+  std::cout << "locals" << env->locals << "\n";
+  Cell* result = eval(env, _body);
+
+  // pop args from the local stack
+  env->unwind_locals(locals_entry_index);
+
+  return result;
 }
 
 
@@ -214,7 +357,7 @@ std::ostream& operator<< (std::ostream& os, const Fn const* fn) {
       os << ':' << Cell::type_name(fn->param(i).type);
     }
   }
-  // return os << ") " << fn->_body << ">";
+  return os << ") " << fn->_body << ">";
   return os << ")" << (void*)fn << ">";
 }
 

@@ -26,7 +26,7 @@ private:
 inline std::ostream& operator<< (std::ostream& os, const Var* p) {
   return ((p->_value == 0)
     ? (os << "<unbound #'" << p->symbol()->c_str() << ">")
-    : (os << "#'" << p->symbol()->c_str()));
+    : (os << "&" << p->symbol()->c_str()));
 }
 
 } // namespace lum

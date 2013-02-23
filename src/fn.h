@@ -14,8 +14,10 @@ struct Fn {
   };
 
   static Fn* create(Env* env, Cell* params_and_bodies);
-  Cell* apply(Env* env, Cell* args);
+  static void free(Fn*);
+
   bool compile(Env*);
+  Cell* apply(Env* env, Cell* args);
 
   uint32_t param_count() const { return _param_count; }
   const Param& param(uint32_t i) const { return _params[i]; }

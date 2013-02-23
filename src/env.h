@@ -10,18 +10,18 @@ namespace lum {
 
 #define LUM_DEBUG_RESULT_STACK 1
 
-template <size_t Size>
-struct CellStack {
-  Cell* at(size_t i) const { assert(i < index); return cells[i]; }
-  Cell* top() const { return index ? cells[index-1] : 0; }
-  void push(Cell* c) { assert(index+1 != Size); cells[index++] = c; }
-  Cell* pop() { return cells[--index]; }
+template <typename T, size_t Size>
+struct Stack {
+  T at(size_t i) const { assert(i < index); return items[i]; }
+  T top() const { return index ? items[index-1] : 0; }
+  void push(T v) { assert(index+1 != Size); items[index++] = v; }
+  T pop() { return items[--index]; }
   size_t index = 0;
-  Cell* cells[Size]; // todo dynamic
+  T items[Size];
 };
 
 template <size_t N>
-inline std::ostream& operator<< (std::ostream& s, const CellStack<N>& p) {
+inline std::ostream& operator<< (std::ostream& s, const Stack<Cell*,N>& p) {
   s << "[";
   size_t i = 0;
   while (i != p.index) {
@@ -51,13 +51,14 @@ struct Env {
         Cell::free(c);
       }
     }
-    CellStack<100> cell_stack;
+    Stack<Cell*,128> cell_stack;
   } results;
 
   Namespace core_ns;
   Namespace* ns; // current
 
-  CellStack<1024> locals;
+  Stack<Cell*,1024> locals;
+  Stack<Fn*,128> compile_stack;
 
   void unwind_locals(size_t end_index) {
     while (locals.index != end_index) {

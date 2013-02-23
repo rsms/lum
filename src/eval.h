@@ -72,6 +72,7 @@ inline Cell* eval_cons(Env* env, Cell* c) {
     // User function
     Fn* fn = (Fn*)target->value.p;
 
+    #if 0
     // push args to the locals stack
     Cell* arg = args;
     size_t locals_entry_index = env->locals.index;
@@ -100,6 +101,10 @@ inline Cell* eval_cons(Env* env, Cell* c) {
 
     // pop args from the local stack
     env->unwind_locals(locals_entry_index);
+    #else
+    // Apply
+    result = fn->apply(env, args);
+    #endif
 
   } else {
     std::cerr << "first item in list is not a function\n";

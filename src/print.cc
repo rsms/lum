@@ -8,7 +8,7 @@
 namespace lum {
 
 inline void _print_rest(std::ostream& s, const Cell* c, bool rest) {
-  if (rest && c->rest != 0) { s << ' '; print(s, c->rest); }
+  if (rest && c->rest != 0) { s << ' '; _print(s, c->rest, rest); }
 }
 
 std::ostream& _print(std::ostream& s, const Cell* c, bool rest) {

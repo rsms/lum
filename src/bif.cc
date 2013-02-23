@@ -235,11 +235,13 @@ Cell* BIF_fn(Env* env, Cell* args) {
     std::cerr << "first argument to 'fn' must be a list\n";
     return 0;
   }
+  // Create function struct
   Fn* fn = Fn::create(env, args);
-  if (fn == 0) {
-    // error
+  // Compile body
+  if (fn == 0 || !fn->compile(env)) {
+    // Error
+    Fn::free(fn);
     Cell::free(args);
-    return 0;
   }
   return Cell::createFn(fn);
 }

@@ -115,38 +115,43 @@ static Cell* compile_chain(Fn* fn, Env* env, Cell* first) {
   while (c) {
     Cell* nc = _compile(fn, env, c);
 
-    #if 1
-    // Special case: (core/fn ...) stays untouched for now
+
+    // Special case: (core/fn ...)
     if (c == first && nc->type == Type::VAR) {
       Cell* vc = ((Var*)nc->value.p)->get();
       if (vc->type == Type::BIF && ((BIFImpl)vc->value.p) == &BIF_fn) {
-        // TODO: Actually compile the contents of (fn ...) but mark env with
-        // something like env->is_compiling_future_fn=true so that unresolved
-        // symbols can be ignored (e.g. (fn (z) (+ z)) would not cause a
-        // "symbol z can't be resolved" error).
+        // Inner function
         std::cout << "[fn compile_cons] inner (core/fn ...)\n";
 
+        // Create a Fn which will parse the arguments
         Fn* inner_fn = Fn::create(env, c->rest);
         if (inner_fn == 0) {
           return 0;
         }
 
+        // TODO: When Fn::compile has been refactored to use compile_chain,
+        // replace the following block with a call to inner_fn->compile(env).
+
+        // Add this inner Fn to the compile stack
         env->compile_stack.push(inner_fn);
 
+        // Now, compile the body of this function 
         Cell* head = compile_chain(inner_fn, env, 
           const_cast<Cell*>(inner_fn->body()));
         
+        // Remove this inner Fn from the compile stack
         assert(env->compile_stack.top() == inner_fn);
         env->compile_stack.pop();
 
-        Fn::free(inner_fn); // throw away
+        // Throw away the temporary inner Fn, and check for errors
+        Fn::free(inner_fn);
         if (head == 0) {
           return 0;
         }
         return first;
       }
     }
-    #endif
+
 
     if (head == 0) {
       head = nc;
@@ -288,6 +293,8 @@ bool Fn::compile(Env* env) {
   Cell* body = _body;
   Cell* prev = 0;
   bool success = true;
+
+  // TODO: use compile_chain instead
 
   while (body != 0) {
     Cell* c = _compile(this, env, body);

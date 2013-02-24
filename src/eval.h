@@ -40,9 +40,7 @@ inline Cell* eval_var(Env* env, Cell* c) {
 
 inline Cell* eval_local(Env* env, Cell* c) {
   assert(c->type == Type::LOCAL);
-  size_t stack_offset = (size_t)c->value.i;
-  assert(stack_offset < env->locals.index);
-  return env->locals.at(stack_offset);
+  return env->get_local((size_t)c->value.i);
 }
 
 
@@ -56,7 +54,11 @@ inline Cell* eval_cons(Env* env, Cell* c) {
   std::cout << "apply(" << target << ", ";
     printchain(std::cout, args) << ")\n";
   target = eval(env, target);
-  Cell* result;
+  Cell* result = 0;
+
+  // Add to apply stack
+  env->apply_stack.push(target);
+  std::cout << "env->apply_stack: " << env->apply_stack << "\n";
 
   if (target->type == Type::BIF) {
     // Apply built-in function
@@ -76,7 +78,6 @@ inline Cell* eval_cons(Env* env, Cell* c) {
 
   } else {
     std::cerr << "first item in list is not a function\n";
-    return 0;
   }
 
   // // Free results from previous evals
@@ -84,6 +85,12 @@ inline Cell* eval_cons(Env* env, Cell* c) {
 
   // // Add our result to the result stack
   // env->results.push(result);
+
+  // Remove from apply stack
+  std::cout << "env->apply_stack: " << env->apply_stack << "\n";
+  assert(env->apply_stack.top() == target);
+  env->apply_stack.pop();
+
   return result;
 }
 

@@ -9,6 +9,17 @@ namespace lum {
 struct Cell;
 struct Env;
 
+struct Bif {
+  typedef Cell* (*Impl)(Env*,Cell*);
+  constexpr Bif(Impl impl, size_t param_count, bool accepts_varargs)
+      : impl(impl)
+      , param_count(param_count)
+      , accepts_varargs(accepts_varargs) {}
+  Impl impl;
+  size_t param_count;
+  bool accepts_varargs;
+};
+
 typedef void (*NumOpI)(int64_t& v, int64_t operand);
 typedef void (*NumOpF)(double& v, double operand);
 

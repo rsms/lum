@@ -105,7 +105,14 @@ struct Cell {
   static Cell* createNil(Cell* rest=0) {
     return createSym(kSym_nil, rest);
   }
-  static Cell* copy(Cell* other, Cell* rest=0) {
+  static Cell* copy(Cell* other) {
+    // creates an exact but shallow copy of `other`
+    Cell* c = alloc();
+    memcpy((void*)c, (const void*)other, sizeof(Cell));
+    return c;
+  }
+  static Cell* copy(Cell* other, Cell* rest) {
+    // creates a shallow copy of `other` with a different `rest`
     Cell* c = alloc();
     memcpy((void*)c, (const void*)other, sizeof(Cell));
     c->rest = rest;

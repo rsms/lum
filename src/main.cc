@@ -357,30 +357,77 @@ int main(int argc, char** argv) {
   r = print_eval(env, b);
   env.results.unwind(0);
 
-  // (fn (x y) (+ y x)) => #<fn(x y)>
+  // (fn (x y z) (+ x y z)) => #<fn(x y z)>
   std::cout << "------\n";
-  a = Cell::createSym(intern_sym("x"));
+  a = Cell::createSym(intern_sym("z"));
   a = Cell::createSym(intern_sym("y"), a);
+  a = Cell::createSym(intern_sym("x"), a);
   a = Cell::createSym(intern_sym("+"), a);
   c = Cell::createCons(a); // (+ y x)
-  a = Cell::createSym(intern_sym("y"));
+  a = Cell::createSym(intern_sym("z"));
+  a = Cell::createSym(intern_sym("y"), a);
   a = Cell::createSym(intern_sym("x"), a);
   c = Cell::createCons(a, c); // (x y) (+ y x)
   a = Cell::createSym(kSym_fn, c); // fn (x y) (+ y x)
   c = Cell::createCons(a); // (fn (x y) (+ y x))
   r = print_eval(env, c);
   std::cout << "------\n";
-  // (#<fn> 4 5) => 9
-  a = Cell::createInt(5);
-  a = Cell::createInt(4, a);
+  // (#<fn> 4 5 6) => 15
+  a = Cell::createInt(4, Cell::createInt(5, Cell::createInt(6)));
   a = Cell::copy(r, a);
-  c = Cell::createCons(a); // (#<fn(x y)> 4 5)
+  c = Cell::createCons(a);
   r = print_eval(env, c);
   env.results.unwind(0);
 
-  // (fn (x y) (fn (z) (+ y z x))) => #<fn(x y)>
+  // (fn (a0 a1)
+  //   (fn (b0)
+  //     (fn (c0)
+  //       (+ a0 a1 b0 c0 cat)
+  //     )
+  //   )
+  // )
+  // => #<fn(x y)>
   std::cout << "------\n";
-  a = Cell::createSym(intern_sym("x"));
+  a = Cell::createSym(intern_sym("cat"));
+  a = Cell::createSym(intern_sym("c0"), a);
+  a = Cell::createSym(intern_sym("b0"), a);
+  a = Cell::createSym(intern_sym("a1"), a);
+  a = Cell::createSym(intern_sym("a0"), a);
+  a = Cell::createSym(intern_sym("+"), a);
+  c = Cell::createCons(a); // (+ a0 a1 a2 cat)
+  a = Cell::createSym(intern_sym("c0"));
+  c = Cell::createCons(a, c); // (a2) (+ a0 a1 a2 cat)
+  a = Cell::createSym(kSym_fn, c);
+  c = Cell::createCons(a); // (fn (a2) (+ a0 a1 a2 cat))
+  a = Cell::createSym(intern_sym("b0"));
+  c = Cell::createCons(a, c); // (a1) (fn (a2) (+ a0 a1 a2 cat))
+  a = Cell::createSym(kSym_fn, c);
+  c = Cell::createCons(a); // (fn (a1) (fn (a2) (+ a0 a1 a2 cat)))
+  a = Cell::createSym(intern_sym("a1"));
+  a = Cell::createSym(intern_sym("a0"), a);
+  c = Cell::createCons(a, c); // (a0) (fn (a1) (fn (a2) (+ a0 a1 a2 cat)))
+  a = Cell::createSym(kSym_fn, c);
+  c = Cell::createCons(a); // (fn (a0) (fn (a1) (fn (a2) (+ a0 a1 a2 cat))))
+  r = print_eval(env, c);
+  std::cout << "------\n";
+  // (#<fn(a0 a1)> 4 5) => #<fn(b0)>
+  c = Cell::createCons(Cell::copy(r, Cell::createInt(4, Cell::createInt(5))));
+  r = print_eval(env, c);
+  std::cout << "------\n";
+  // (#<fn(b0)> 6) => #<fn(c0)>
+  c = Cell::createCons(Cell::copy(r, Cell::createInt(6)));
+  r = print_eval(env, c);
+  std::cout << "------\n";
+  // (#<fn(c0)> 7) => 22
+  c = Cell::createCons(Cell::copy(r, Cell::createInt(7)));
+  r = print_eval(env, c);
+  env.results.unwind(0);
+  return 0;
+
+  // (fn (x y) (fn (z) (+ y z x cat))) => #<fn(x y)>
+  std::cout << "------\n";
+  a = Cell::createSym(intern_sym("cat"));
+  a = Cell::createSym(intern_sym("x"), a);
   a = Cell::createSym(intern_sym("y"), a);
   a = Cell::createSym(intern_sym("z"), a);
   a = Cell::createSym(intern_sym("+"), a);
@@ -395,6 +442,7 @@ int main(int argc, char** argv) {
   a = Cell::createSym(kSym_fn, c); // fn (x y) (fn (z) (+ y z x))
   c = Cell::createCons(a); // (fn (x y) (fn (z) (+ y z x)))
   r = print_eval(env, c);
+  return 0;
   std::cout << "------\n";
   // (#<fn> 4 5) => #<fn(z)>
   a = Cell::createInt(5);

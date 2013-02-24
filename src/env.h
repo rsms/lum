@@ -12,23 +12,34 @@ namespace lum {
 
 template <typename T, size_t Size>
 struct Stack {
-  T at(size_t i) const { assert(i < index); return items[i]; }
-  T top() const { return index ? items[index-1] : 0; }
-  void push(T v) { assert(index+1 != Size); items[index++] = v; }
-  T pop() { return items[--index]; }
-  size_t index = 0;
+  T at(size_t i) const { assert(i < depth); return items[i]; }
+  T at_top(size_t offset) const {
+    assert(offset < depth);
+    return at((depth-1) - offset);
+  }
+  T top() const { return depth ? items[depth-1] : 0; }
+  void push(T v) { assert(depth+1 != Size); items[depth++] = v; }
+  T pop() { return items[--depth]; }
+  size_t depth = 0;
   T items[Size];
 };
 
-template <size_t N>
-inline std::ostream& operator<< (std::ostream& s, const Stack<Cell*,N>& p) {
+template <typename T, size_t N>
+inline std::ostream& operator<< (std::ostream& s, const Stack<T,N>& p) {
+  #if 0
   s << "[";
   size_t i = 0;
-  while (i != p.index) {
-    if (i != 0) { s << ", "; }
-    print1(s, p.at(i++));
+  while (i != p.depth) {
+    if (i != 0) { s << ", "; } s << p.at(i++);
   }
   return s << "]";
+  #else
+  size_t i = p.depth;
+  while (i--) {
+    s << "\n  [" << i << "] => " << p.at(i);
+  }
+  return s;
+  #endif
 }
 
 struct Env {
@@ -39,11 +50,11 @@ struct Env {
       #endif
       cell_stack.push(c);
     }
-    size_t index() { return cell_stack.index; }
+    size_t index() { return cell_stack.depth; }
     Cell* top() { return cell_stack.top(); }
     Cell* pop() { return cell_stack.pop(); }
-    void unwind(size_t end_index) {
-      while (cell_stack.index != end_index) {
+    void unwind(size_t end_depth) {
+      while (cell_stack.depth != end_depth) {
         Cell* c = cell_stack.pop();
         #if LUM_DEBUG_RESULT_STACK
         std::cout << "results" << cell_stack << " → " << c << '\n';
@@ -59,9 +70,16 @@ struct Env {
 
   Stack<Cell*,1024> locals;
   Stack<Fn*,128> compile_stack;
+  Stack<Cell*,1024> apply_stack;
 
-  void unwind_locals(size_t end_index) {
-    while (locals.index != end_index) {
+  // Get the local which is at position `offset_from_top` from the top of the
+  // locals stack.
+  Cell* get_local(size_t offset_from_top) {
+    return locals.at_top(offset_from_top);
+  }
+
+  void unwind_locals(size_t end_depth) {
+    while (locals.depth != end_depth) {
       locals.pop(); }}
 
   typedef

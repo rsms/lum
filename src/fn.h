@@ -21,12 +21,18 @@ struct Fn {
 
   uint32_t param_count() const { return _param_count; }
   const Param& param(uint32_t i) const { return _params[i]; }
-  const Cell* body() const { return _body; }
+  Cell* body() const { return _body; }
 
   Cell* _body;
+  bool _has_outside_locals;
   uint32_t _param_count;
   Param _params[];
 };
+
+// Note on the difference b/w functions and macros:
+//   Lisp functions take Lisp values as input and return Lisp values. They
+//   are executed at run-time. Lisp macros take Lisp code as input, and
+//   return Lisp code. They are executed at compiler pre-processor time.
 
 std::ostream& operator<< (std::ostream& os, const Fn const* fn);
 

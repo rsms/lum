@@ -34,7 +34,7 @@ std::ostream& _print(std::ostream& s, const Cell* c, bool rest) {
         _print_rest(s, c, rest); break; }
       case Type::QUOTE: { s << '\''; _print(s, (const Cell*)c->value.p, true);
         _print_rest(s, c, rest); break; }
-      case Type::CONS: {
+      case Type::LIST: {
         s << '('; _print(s, (const Cell*)c->value.p, true) << ')';
         _print_rest(s, c, rest);
         break;

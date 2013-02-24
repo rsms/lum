@@ -16,7 +16,7 @@ static std::ostream& _dpr(Env* env) {
 
 Fn* Fn::create(Env* env, Cell* params) {
   assert(params != 0);
-  assert(params->type == Type::CONS);
+  assert(params->type == Type::LIST);
 
   Cell* body = params->rest;
   assert(body != 0);
@@ -169,14 +169,14 @@ static Cell* compile_chain(Fn* fn, Env* env, Cell* first) {
 }
 
 
-static Cell* compile_cons(Fn* fn, Env* env, Cell* cons) {
-  _dpr(env) << "compile_cons(" << cons << ")...\n";
+static Cell* compile_list(Fn* fn, Env* env, Cell* cons) {
+  _dpr(env) << "compile_list(" << cons << ")...\n";
   Cell* head = compile_chain(fn, env, (Cell*)cons->value.p);
   if (head == 0) {
     return 0;
   }
   cons->value.p = (void*)head;
-  _dpr(env) << "compile_cons(...) => " << cons << "\n";
+  _dpr(env) << "compile_list(...) => " << cons << "\n";
   return cons;
 }
 
@@ -395,7 +395,7 @@ static Cell* _compile(Fn* fn, Env* env, Cell* c) {
   switch (c->type) {
     case Type::SYM:     { return compile_symbol(fn, env, c); }
     case Type::LOCAL:   { return compile_local(fn, env, c); }
-    case Type::CONS:    { return compile_cons(fn, env, c); }
+    case Type::LIST:    { return compile_list(fn, env, c); }
     case Type::FN:      { return compile_fn(fn, env, c); }
     default: { return c; }
   }

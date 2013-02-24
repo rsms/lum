@@ -44,9 +44,9 @@ inline Cell* eval_local(Env* env, Cell* c) {
 }
 
 
-inline Cell* eval_cons(Env* env, Cell* c) {
+inline Cell* eval_list(Env* env, Cell* c) {
   //std::cout << "eval("; print_1(std::cout, c) << ")\n";
-  assert(c->type == Type::CONS);
+  assert(c->type == Type::LIST);
 
   size_t result_entry_index = env->results.index();
   Cell* target = (Cell*)c->value.p;
@@ -101,7 +101,7 @@ inline Cell* eval(Env* env, Cell* c) {
     case Type::VAR:     { return eval_var(env, c); }
     case Type::LOCAL:   { return eval_local(env, c); }
     case Type::QUOTE:   { return eval_quote(env, c); }
-    case Type::CONS:    { return eval_cons(env, c); }
+    case Type::LIST:    { return eval_list(env, c); }
     default: { return c; }
   }
 }

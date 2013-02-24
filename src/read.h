@@ -135,13 +135,13 @@ void Reader::append_cell(Cell* cell) {
         return;
       } else {
         // if frame of stack is not a quote, it must be a cons
-        assert(frame.container->type == Type::CONS);
+        assert(frame.container->type == Type::LIST);
       }
     } else {
       // Next in an existing cons
       assert(frame.tail != 0);
       assert(frame.tail->rest == 0);
-      assert(frame.container->type == Type::CONS);
+      assert(frame.container->type == Type::LIST);
       frame.tail->rest = cell;
     }
 
@@ -169,16 +169,16 @@ inline void Reader::read_root() {
       break;
     }
     case '(': {
-      // beginning of a cons list
+      // beginning of a list
       std::cout << "got '('\n";
-      stack.emplace_back(Cell::createCons(0));
+      stack.emplace_back(Cell::createList(0));
       input.consume1();
       break;
     }
     case ')': {
-      // end of a cons list
+      // end of a list
       std::cout << "got ')'\n";
-      if (stack.empty() || stack.back().container->type != Type::CONS) {
+      if (stack.empty() || stack.back().container->type != Type::LIST) {
         set_error(Error::Code::UnbalancedGroup, "Unexpected ')'");
         return;
       }

@@ -19,7 +19,7 @@ enum class Type : size_t {
   VAR,
   LOCAL,
   QUOTE,
-  CONS,  // (x ...)
+  LIST,  // (x ...)
   NS,
 };
 
@@ -93,8 +93,8 @@ struct Cell {
   static Cell* createQuote(Cell* v, Cell* rest=0) {
     return createPtr(Type::QUOTE, (void*)v, rest);
   }
-  static Cell* createCons(Cell* v, Cell* rest=0) {
-    return createPtr(Type::CONS, (void*)v, rest);
+  static Cell* createList(Cell* v, Cell* rest=0) {
+    return createPtr(Type::LIST, (void*)v, rest);
   }
   static Cell* createNS(Namespace* v, Cell* rest=0) {
     return createPtr(Type::NS, (void*)v, rest);

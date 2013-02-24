@@ -151,7 +151,7 @@ Cell* BIF_cons(Env* env, Cell* args) {
       return 0;
     }
     rest = eval(env, rest);
-    if (rest->type != Type::CONS) {
+    if (rest->type != Type::LIST) {
       std::cerr <<
         "second argument to built-in function 'cons' is not a list\n";
       return 0;
@@ -165,7 +165,7 @@ Cell* BIF_cons(Env* env, Cell* args) {
       rest = Cell::copy(rest);
     }
   } else {
-    rest = Cell::createCons(0);
+    rest = Cell::createList(0);
   }
 
   // First, evaluate `first`
@@ -231,7 +231,7 @@ Cell* BIF_fn(Env* env, Cell* args) {
     std::cerr << "built-in function 'fn' requires at least two arguments\n";
     return 0;
   }
-  if (args->type != Type::CONS) {
+  if (args->type != Type::LIST) {
     std::cerr << "first argument to 'fn' must be a list\n";
     return 0;
   }

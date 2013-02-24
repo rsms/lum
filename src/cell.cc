@@ -15,7 +15,7 @@ const char* Cell::type_name(Type type) {
     case Type::VAR:     { return "var"; }
     case Type::LOCAL:   { return "local"; }
     case Type::QUOTE:   { return "quote"; }
-    case Type::CONS:    { return "cons"; }
+    case Type::LIST:    { return "list"; }
     case Type::NS:      { return "ns"; }
   }
 }

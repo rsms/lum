@@ -356,12 +356,11 @@ static Cell* compile_local(Fn* fn, Env* env, Cell* cell) {
   // this function needs a closure.
   fn->_has_outside_locals = true;
 
-  // offset by the currently executing function's local-stack size
+  // offset by the currently executing function's param_count
   //
-  // PC = 1
-  // PN = PC-1 = 0
-  // O = 1
-  // NO = O-PN = 1-0 = 1
+  // L = 5            ; local offset (from locals' stack top)
+  // PC = 2           ; executing function's param_count
+  // O = L - PC       ; new local offset
 
   // In this situation the apply_stack top should be the core/fn BIF since we
   // are compiling a function.
@@ -373,9 +372,7 @@ static Cell* compile_local(Fn* fn, Env* env, Cell* cell) {
   // the top.
   assert(env->apply_stack.depth > 1);
   Cell* curr_func = env->apply_stack.at_top(1);
-  // TODO: Support BIFs
-
-  assert(curr_func->type == Type::FN);
+  assert(curr_func->type == Type::FN); // TODO: Support BIFs
   size_t param_count = ((Fn*)curr_func->value.p)->param_count();
   assert(param_count <= offset_from_top);
   size_t outer_offset_from_top = offset_from_top - param_count;

@@ -4,11 +4,26 @@
 #include <lum/env.h>
 #include <lum/eval.h>
 #include <lum/print.h>
+#include <lum/sym.h>
 
 namespace lum {
 
+#define LUM_BIF_APPLY(Name, ...) \
+  const Bif const* kBif_##Name;
+#include "bif-defs.h"
+#undef LUM_BIF_APPLY
+
+
+#define DECL_BIF(Name, Impl, ...) \
+  static constexpr Bif kConstBif_##Name = {Impl, __VA_ARGS__};
+
+
+// Generic numerical operation template
+typedef void (*NumOpI)(int64_t& v, int64_t operand);
+typedef void (*NumOpF)(double& v, double operand);
+
 template <NumOpI IOP, NumOpF FOP>
-Cell* BIF_numop(Env* env, Cell* args) {
+Cell* _numop(Env* env, Cell* args) {
   typedef union { void* p; int64_t i; double f; } NumVal;
   NumVal sum;
   sum.p = 0;
@@ -84,15 +99,35 @@ Cell* BIF_numop(Env* env, Cell* args) {
   return 0;
 }
 
+inline void _sumI(int64_t& v, int64_t operand) { v += operand; }
+inline void _sumF(double& v, double operand)   { v += operand; }
 
-template Cell* BIF_numop<BIF_sumI, BIF_sumF>(Env* env, Cell* args);
-template Cell* BIF_numop<BIF_subI, BIF_subF>(Env* env, Cell* args);
-template Cell* BIF_numop<BIF_mulI, BIF_mulF>(Env* env, Cell* args);
-template Cell* BIF_numop<BIF_divI, BIF_divF>(Env* env, Cell* args);
-template Cell* BIF_numop<BIF_remI, BIF_remF>(Env* env, Cell* args);
+inline void _subI(int64_t& v, int64_t operand) { v -= operand; }
+inline void _subF(double& v, double operand)   { v -= operand; }
+
+inline void _mulI(int64_t& v, int64_t operand) { v *= operand; }
+inline void _mulF(double& v, double operand)   { v *= operand; }
+
+inline void _divI(int64_t& v, int64_t operand) { v /= operand; }
+inline void _divF(double& v, double operand)   { v /= operand; }
+
+inline void _remI(int64_t& v, int64_t operand) { v %= operand; }
+inline void _remF(double& v, double operand)   { v = fmod(v, operand); }
+
+// template Cell* _numop<_sumI, _sumF>(Env*,Cell*);
+// template Cell* _numop<_subI, _subF>(Env*,Cell*);
+// template Cell* _numop<_mulI, _mulF>(Env*,Cell*);
+// template Cell* _numop<_divI, _divF>(Env*,Cell*);
+// template Cell* _numop<_remI, _remF>(Env*,Cell*);
+
+DECL_BIF(sum, LUM_MCAT(_numop<_sumI, _sumF>), 0, true)
+DECL_BIF(sub, LUM_MCAT(_numop<_subI, _subF>), 0, true)
+DECL_BIF(mul, LUM_MCAT(_numop<_mulI, _mulF>), 0, true)
+DECL_BIF(div, LUM_MCAT(_numop<_divI, _divF>), 0, true)
+DECL_BIF(rem, LUM_MCAT(_numop<_remI, _remF>), 0, true)
 
 
-Cell* BIF_eq(Env* env, Cell* args) {
+static Cell* _eq(Env* env, Cell* args) {
   if (args == 0) {
     std::cerr << "too few arguments given to built-in function '='\n";
     return 0;
@@ -135,9 +170,10 @@ Cell* BIF_eq(Env* env, Cell* args) {
   return_false:
   return Cell::createSym(kSym_false);
 }
+DECL_BIF(eq, _eq, 1, true)
 
 
-Cell* BIF_cons(Env* env, Cell* args) {
+static Cell* _cons(Env* env, Cell* args) {
   if (args == 0) {
     std::cerr << "too few arguments given to built-in function 'cons'\n";
     return 0;
@@ -188,9 +224,10 @@ Cell* BIF_cons(Env* env, Cell* args) {
 
   return rest;
 }
+DECL_BIF(cons, _cons, 1, true)
 
 
-Cell* BIF_in_ns(Env* env, Cell* arg) {
+static Cell* _in_ns(Env* env, Cell* arg) {
   if (arg == 0 || arg->rest != 0) {
     std::cerr << "built-in function 'in-ns' takes exactly one argument\n";
     return 0;
@@ -203,11 +240,12 @@ Cell* BIF_in_ns(Env* env, Cell* arg) {
   Namespace* ns = env->ns_set_current(name);
   return Cell::createNS(ns);
 }
+DECL_BIF(in_ns, _in_ns, 1, false)
 
 
-Cell* BIF_def(Env* env, Cell* arg) {
+static Cell* _def(Env* env, Cell* arg) {
   if (arg == 0 || arg->rest == 0 || arg->rest->rest != 0) {
-    std::cerr << "built-in function 'def' takes exactly one argument\n";
+    std::cerr << "built-in function 'def' takes exactly two arguments\n";
     return 0;
   }
   if (arg->type != Type::SYM) {
@@ -223,9 +261,10 @@ Cell* BIF_def(Env* env, Cell* arg) {
   Var* v = env->define(sym, arg->rest);
   return Cell::createVar(v);
 }
+DECL_BIF(def, _def, 2, false)
 
 
-Cell* BIF_fn(Env* env, Cell* args) {
+static Cell* _fn(Env* env, Cell* args) {
   // (fn (arg0 ...argN) body0 ...bodyN)
   if (args == 0 || args->rest == 0) {
     std::cerr << "built-in function 'fn' requires at least two arguments\n";
@@ -244,6 +283,32 @@ Cell* BIF_fn(Env* env, Cell* args) {
     Cell::free(args);
   }
   return Cell::createFn(fn);
+}
+DECL_BIF(fn, _fn, 2, true)
+
+
+// Initialize exported pointers to internal constants.
+// Also sets the names of the structs to point to built-in constant strings.
+static volatile const struct _BifInitializer {
+  _BifInitializer() {
+    #define LUM_BIF_APPLY(Name, ...) \
+      kBif_##Name = (const Bif const*)&kConstBif_##Name; \
+      const_cast<Bif*>(kBif_##Name)->name = kStr_##Name;
+    #include "bif-defs.h"
+    #undef LUM_BIF_APPLY
+  }
+} _bif_initializer;
+
+
+std::ostream& operator<< (std::ostream& os, const Bif const* p) {
+  os << "#<bif " << p->name << "(";
+  if (p->param_count()) {
+    os << p->param_count();
+  }
+  if (p->accepts_varargs) {
+    os << "...";
+  }
+  return os << ")>";
 }
 
 

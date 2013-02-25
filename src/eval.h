@@ -5,6 +5,7 @@
 #include <lum/env.h>
 #include <lum/sym.h>
 #include <lum/fn.h>
+#include <lum/bif.h>
 #include <lum/print.h>
 
 namespace lum {
@@ -62,8 +63,8 @@ inline Cell* eval_list(Env* env, Cell* c) {
 
   if (target->type == Type::BIF) {
     // Apply built-in function
-    BIFImpl impl = (BIFImpl)target->value.p;
-    result = impl(env, args);
+    const Bif* bif = Cell::getBif(target);
+    result = bif->apply(env, args);
 
     // Free results from previous evals
     env->results.unwind(result_entry_index);

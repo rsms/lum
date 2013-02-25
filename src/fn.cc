@@ -126,7 +126,7 @@ static Cell* compile_chain(Fn* fn, Env* env, Cell* first) {
     // Special case: (core/fn ...)
     if (c == first && nc->type == Type::VAR) {
       Cell* vc = ((Var*)nc->value.p)->get();
-      if (vc->type == Type::BIF && ((BIFImpl)vc->value.p) == &BIF_fn) {
+      if (vc->type == Type::BIF && Cell::getBif(vc) == kBif_fn) {
         // Inner function
         _dpr(env) << "compile_chain() inner function\n";
 
@@ -365,7 +365,7 @@ static Cell* compile_local(Fn* fn, Env* env, Cell* cell) {
   // In this situation the apply_stack top should be the core/fn BIF since we
   // are compiling a function.
   assert(env->apply_stack.top()->type == Type::BIF);
-  assert(env->apply_stack.top()->value.p == (void*)BIF_fn);
+  assert(Cell::getBif(env->apply_stack.top()) == kBif_fn);
 
   // Now we pick the function that is applying core/fn. So we make sure that
   // the apply_stack is at least 2 cells deep and then we grab the second from

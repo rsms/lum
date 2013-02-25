@@ -29,17 +29,13 @@ struct Cell;
 struct Env;
 struct Sym;
 struct Fn;
-
-// BIF implementation function type
-typedef Cell* (*BIFImpl)(Env*,Cell*);
+struct Bif;
 
 struct Cell {
   Type type;
   union { void* p; int64_t i; double f; } value;
   Cell* rest;
 
-  constexpr Cell(BIFImpl p, Cell* rest=0)
-    : type(Type::BIF), value{.p=(void*)(p)}, rest(rest) {}
   constexpr Cell(const Sym const* p, Cell* rest=0)
     : type(Type::SYM), value{.p=(void*)(p)}, rest(rest) {}
   constexpr Cell(bool p, Cell* rest=0)
@@ -75,9 +71,15 @@ struct Cell {
     c->rest = rest;
     return c;
   }
-  static Cell* createBIF(BIFImpl v) {
+
+  static Cell* createBif(const Bif* v) {
     return createPtr(Type::BIF, (void*)v, 0);
   }
+  static const Bif* getBif(const Cell* c) {
+    assert(c->type == Type::BIF);
+    return ((const Bif*)c->value.p);
+  }
+
   static Cell* createSym(const Sym const* v, Cell* rest=0) {
     return createPtr(Type::SYM, (void*)v, rest);
   }

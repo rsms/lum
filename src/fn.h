@@ -34,7 +34,7 @@ struct Fn {
 //   are executed at run-time. Lisp macros take Lisp code as input, and
 //   return Lisp code. They are executed at compiler pre-processor time.
 
-std::ostream& operator<< (std::ostream& os, const Fn const* fn);
+std::ostream& operator<< (std::ostream& os, const Fn const*);
 
 } // namespace lum
 

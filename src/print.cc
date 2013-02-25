@@ -1,6 +1,7 @@
 #include <lum/print.h>
 #include <lum/cell.h>
 #include <lum/fn.h>
+#include <lum/bif.h>
 #include <lum/sym.h>
 #include <lum/namespace.h>
 #include <iomanip>
@@ -20,7 +21,7 @@ std::ostream& _print(std::ostream& s, const Cell* c, bool rest) {
         _print_rest(s, c, rest); break; }
       case Type::FLOAT: { s << std::dec << c->value.f;
         _print_rest(s, c, rest); break; }
-      case Type::BIF: { s << "#<bif " << c->value.p << ">";
+      case Type::BIF: { s << Cell::getBif(c);
         _print_rest(s, c, rest); break; }
       case Type::FN: { s << ((Fn*)c->value.p);
         _print_rest(s, c, rest); break; }

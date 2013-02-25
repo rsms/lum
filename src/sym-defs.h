@@ -22,15 +22,12 @@ LUM_SYM_APPLY(core,  "core", 0)
 LUM_SYM_APPLY(nil,   "nil",   Cell::createSym(kSym_nil) )
 LUM_SYM_APPLY(true,  "true",  Cell::createBool(true) )
 LUM_SYM_APPLY(false, "false", Cell::createBool(false) )
-LUM_SYM_APPLY(sum,   "+",     LUM_MCAT(Cell::createBIF(BIF_numop<BIF_sumI, BIF_sumF>)) )
-LUM_SYM_APPLY(sub,   "-",     LUM_MCAT(Cell::createBIF(BIF_numop<BIF_subI, BIF_subF>)) )
-LUM_SYM_APPLY(mul,   "*",     LUM_MCAT(Cell::createBIF(BIF_numop<BIF_mulI, BIF_mulF>)) )
-LUM_SYM_APPLY(div,   "/",     LUM_MCAT(Cell::createBIF(BIF_numop<BIF_divI, BIF_divF>)) )
-LUM_SYM_APPLY(rem,   "rem",   LUM_MCAT(Cell::createBIF(BIF_numop<BIF_remI, BIF_remF>)) )
-LUM_SYM_APPLY(cons,  "cons",  Cell::createBIF(BIF_cons) )
-LUM_SYM_APPLY(in_ns, "in-ns", Cell::createBIF(BIF_in_ns) )
-LUM_SYM_APPLY(def,   "def",   Cell::createBIF(BIF_def) )
-LUM_SYM_APPLY(eq,    "=",     Cell::createBIF(BIF_eq) )
-LUM_SYM_APPLY(fn,    "fn",    Cell::createBIF(BIF_fn) )
+
+// Export BIFs like so:
+// LUM_SYM_APPLY(sum, "+",    Cell::createBif(kBif_sum))
+#define LUM_BIF_APPLY(Name, CStr) \
+LUM_SYM_APPLY(Name,   CStr,   Cell::createBif(kBif_##Name))
+#include <lum/bif-defs.h>
+#undef LUM_BIF_APPLY
 
 #endif // LUM_SYM_APPLY

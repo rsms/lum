@@ -18,7 +18,7 @@ headers_pub_common := $(patsubst $(SRCDIR)/%,%,$(wildcard $(SRCDIR)/common/*.h))
 headers_pub :=\
 	lum.h \
   common.h $(headers_pub_common) \
-  hash.h str.h sym.h sym-defs.h bif.h fn.h cell.h env.h var.h \
+  hash.h str.h sym.h sym-defs.h bif.h bif-defs.h fn.h cell.h env.h var.h \
   namespace.h eval.h print.h read.h \
 
 main_sources := $(SRCDIR)/main.cc

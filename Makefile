@@ -121,7 +121,7 @@ test: c_flags += -DLUM_TEST_SUIT_RUNNING=1
 test: $(test_programs)
 test/%: lib$(project_id) test_pre $(object_dir)/$(SRCDIR)/%.test.o
 	@printf "Running $@ ($(SRCDIR)/$(@F).test.cc) ... "
-	@$(LD) $(ld_flags) -l$(project_id) -o $@ $(word 3,$^)
+	@$(LD) $(ld_flags) $(xxld_flags) -l$(project_id) -o $@ $(word 3,$^)
 	@$@ >/dev/null
 	@echo PASS
 	@rm -f $@ $^

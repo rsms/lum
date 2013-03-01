@@ -6,8 +6,8 @@
 
 namespace lum { namespace hash {
 
-constexpr uint32_t fnv1a(char const*const cstr);
-constexpr uint32_t fnv1a(char const*const bytes, const size_t len);
+constexpr uint32_t fnv1a(const char *const cstr);
+constexpr uint32_t fnv1a(const char *const bytes, const size_t len);
 constexpr uint32_t combine(uint32_t a, uint32_t b);
 
 const uint32_t FNV1A_PRIME = 0x01000193;
@@ -16,25 +16,25 @@ const uint32_t FNV1A_SEED = 0x811c9dc5;
 // ---- impl ----
 // inspired by https://gist.github.com/filsinger/1255697
 constexpr inline uint32_t _fnv1a(
-    char const*const str,
+    const char *const str,
     const size_t len,
     const uint32_t v)
 {
   return (len == 0) ? v :
     _fnv1a(str + 1, len - 1, ( v ^ uint32_t(str[0]) ) * FNV1A_PRIME);
 }
-constexpr inline uint32_t fnv1a(char const*const str, const size_t len) {
+constexpr inline uint32_t fnv1a(const char *const str, const size_t len) {
   return _fnv1a(str, len, FNV1A_SEED);
 }
 
 constexpr inline uint32_t _fnv1a(
-    char const*const str, 
+    const char *const str,
     const uint32_t v)
 {
   return (str[0] == '\0') ? v :
     _fnv1a(&str[1], ( v ^ uint32_t(str[0]) ) * FNV1A_PRIME);
 }
-constexpr inline uint32_t fnv1a(char const*const str) {
+constexpr inline uint32_t fnv1a(const char *const str) {
   return _fnv1a(str, FNV1A_SEED);
 }
 

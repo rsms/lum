@@ -10,6 +10,7 @@
 #include <lum/read.h>
 #include <lum/eval.h>
 #include <lum/print.h>
+#include <lum/map.h>
 
 namespace lum {
 
@@ -39,9 +40,32 @@ static Cell* print_eval(Env& env, Cell* expr) {
 // p = &C1
 // Note: There's a 1:1 relation between a cons cell and a value
 //
+
 int main(int argc, char** argv) {
   using std::cout;
   Env env;
+
+
+  #if 0 // PersistentMap
+  typedef Map<const char*, int, hash::fnv1a> M;
+  uint32_t h = hash::fnv1a("shell");
+  h = 1258;
+  std::cout << "h => " << h << "\n"
+            << " bin:    " << debug_fbin32(h) << "\n"
+            << " mask:   " << debug_fbin32(M::mask(h, 5)) << "\n"
+            << " bitpos: " << debug_fbin32(M::bitpos(h, 5)) << "\n"
+            ;
+
+  M empty_m;
+  M* m = &empty_m;
+  m = M::assoc(m, "shell", 100);
+  int value = M::get(m, "shell");
+  assert(value == 100);
+  // const Map::Node* m = Map::assoc(m, );
+  // Map::BitmapNode* bn;
+  // bn->has_node(Map::bitpos(h, 5));
+  return 0;
+  #endif // PersistentMap
 
   #if 0
   Reader R("('lol cat) () (Z elda) ");

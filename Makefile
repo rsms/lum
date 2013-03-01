@@ -40,7 +40,7 @@ lib_objects := $(lib_objects:%.mm=%.o)
 lib_objects := $(call SrcToObjects,$(object_dir),$(lib_objects))
 main_objects = $(call SrcToObjects,$(object_dir),${main_sources:.cc=.o})
 test_objects = $(call SrcToObjects,$(object_dir),$(test_sources:.cc=.o))
-test_programs = $(sort $(patsubst %.cc,$(TESTS_BUILD_PREFIX)/%.test,$(test_sources)))
+test_programs = $(sort $(patsubst $(SRCDIR)/%.test.cc,test/%,$(test_sources)))
 test_program_dirs = $(call FileDirs,$(test_programs))
 object_dirs = $(call FileDirs,$(lib_objects)) $(call FileDirs,$(main_objects))
 
@@ -64,8 +64,8 @@ main_program = $(BIN_BUILD_PREFIX)/$(project_id)
 boost_prefix = $(DEPS_ROOT)/boost
 
 # Compiler and linker flags
-c_flags    := $(CFLAGS) -MMD -fobjc-arc
-cxx_flags  := $(CXXFLAGS) -MMD -fobjc-arc
+c_flags    := $(CFLAGS) -MMD
+cxx_flags  := $(CXXFLAGS) -MMD
 ld_flags   := $(LDFLAGS)
 xxld_flags := $(XXLDFLAGS)
 
@@ -110,18 +110,21 @@ $(static_library): $(lib_objects)
 	$(AR) -rcL $@ $^
 
 # Build and run tests
+#   To run all tests:
+#      make test
+#   To run a specific test:
+#      make test/foo
+#   Test name-to-source maps: test/<name> -> src/<name>.test.cc
 test_pre:
 	@mkdir -p $(test_program_dirs)
 test: c_flags += -DLUM_TEST_SUIT_RUNNING=1
-test: lib$(project_id) test_pre $(test_programs)
-$(TESTS_BUILD_PREFIX)/%.test: $(object_dir)/%.o
-	@$(LD) $(ld_flags) -l$(project_id) -o $@ $^
-	@printf "Running test: %s ... " $(patsubst %.test,%.cc,$(@F))
+test: $(test_programs)
+test/%: lib$(project_id) test_pre $(object_dir)/$(SRCDIR)/%.test.o
+	@printf "Running $@ ($(SRCDIR)/$(@F).test.cc) ... "
+	@$(LD) $(ld_flags) -l$(project_id) -o $@ $(word 3,$^)
 	@$@ >/dev/null
 	@echo PASS
-	@rm -f $@ # $^
-
-# test/str
+	@rm -f $@ $^
 
 -include ${test_objects:.o=.d}
 

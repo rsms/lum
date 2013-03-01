@@ -41,7 +41,7 @@ inline bool Str::ends_with(const char* bytes, size_t len) const {
   return length >= len &&
          memcmp((const void*)(((const char*)_cstr)+(length-len)),
                 (const void*)bytes,
-                len);
+                len) == 0;
 }
 
 inline bool Str::ends_with(const char* cstr) const {

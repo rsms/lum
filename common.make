@@ -53,8 +53,6 @@ else
 	#LDFLAGS +=
 endif
 
-CXXFLAGS := $(CFLAGS) $(CXXFLAGS)
-
 # Functions
 
 # $(call PubHeaderNames,<header_pub_dir>,<list of header files>) -> <list of pub header files>

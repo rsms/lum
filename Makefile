@@ -1,3 +1,5 @@
+# ifeq ($(CC),gcc)
+# override DEBUG = 1 # Always build tests in debug mode
 include common.make
 include deps/llvm/config.make
 SRCDIR := src
@@ -23,6 +25,8 @@ headers_pub :=\
 
 main_sources := $(SRCDIR)/main.cc
 
+test_sources := $(wildcard $(SRCDIR)/*.test.cc)
+
 # --- conf ---------------------------------------------------------------------
 
 project_id = lum
@@ -35,6 +39,9 @@ lib_objects := $(lib_objects:%.cc=%.o)
 lib_objects := $(lib_objects:%.mm=%.o)
 lib_objects := $(call SrcToObjects,$(object_dir),$(lib_objects))
 main_objects = $(call SrcToObjects,$(object_dir),${main_sources:.cc=.o})
+test_objects = $(call SrcToObjects,$(object_dir),$(test_sources:.cc=.o))
+test_programs = $(sort $(patsubst %.cc,$(TESTS_BUILD_PREFIX)/%.test,$(test_sources)))
+test_program_dirs = $(call FileDirs,$(test_programs))
 object_dirs = $(call FileDirs,$(lib_objects)) $(call FileDirs,$(main_objects))
 
 # For LLVM IR and Assembly output
@@ -102,6 +109,22 @@ $(static_library): $(lib_objects)
 	@mkdir -p $(dir $(static_library))
 	$(AR) -rcL $@ $^
 
+# Build and run tests
+test_pre:
+	@mkdir -p $(test_program_dirs)
+test: c_flags += -DLUM_TEST_SUIT_RUNNING=1
+test: lib$(project_id) test_pre $(test_programs)
+$(TESTS_BUILD_PREFIX)/%.test: $(object_dir)/%.o
+	@$(LD) $(ld_flags) -l$(project_id) -o $@ $^
+	@printf "Running test: %s ... " $(patsubst %.test,%.cc,$(@F))
+	@$@ >/dev/null
+	@echo PASS
+	@rm -f $@ # $^
+
+# test/str
+
+-include ${test_objects:.o=.d}
+
 # Generate LLVM IS code (.ll files)
 llvm_ir_pre: common_pre
 	@mkdir -p $(asmout_ll_dirs)
@@ -114,11 +137,11 @@ asm: asm_pre $(asmout_s)
 
 # C++ source -> object
 $(object_dir)/%.o: %.cc
-	$(CXXC) $(cxx_flags) -c -o $@ $<
+	$(CXXC) $(c_flags) $(cxx_flags) -c -o $@ $<
 
 # Objective-C++ source -> object
 $(object_dir)/%.o: %.mm
-	$(CXXC) $(cxx_flags) -c -o $@ $<
+	$(CXXC) $(c_flags) $(cxx_flags) -c -o $@ $<
 
 # C source -> object
 $(object_dir)/%.o: %.c
@@ -144,5 +167,5 @@ $(headers_pub_dir)/%.h: $(SRCDIR)/%.h
 -include ${lib_objects:.o=.d}
 -include ${main_objects:.o=.d}
 
-.PHONY: all clean common_pre $(project_id) lib$(project_id) \
+.PHONY: all clean common_pre $(project_id) lib$(project_id) test_pre test \
 	      llvm_ir_pre asm_pre

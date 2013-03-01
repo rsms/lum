@@ -26,5 +26,7 @@ int main(int argc, const char** argv) {
   assert_true(s->equals(s2));
   assert_true(s2->equals(s));
 
+  Str::free(s);
+
   return 0;
 }
